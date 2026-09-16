@@ -1,0 +1,30 @@
+{
+    "name": "numbersnebula/bagisto-oman-payments",
+    "description": "Omani Payment Gateways Package for Bagisto (Thawani, Bank Muscat SmartPay, AmwalPay, Paymob Oman) via iFrame",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Oman Payments Contributor",
+            "email": "dev@omanpayments.om"
+        }
+    ],
+    "require": {
+        "php": "^8.2|^8.3|^8.4",
+        "guzzlehttp/guzzle": "^7.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "NumbersNebula\\OmanPayments\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "NumbersNebula\\OmanPayments\\Providers\\OmanPaymentsServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
