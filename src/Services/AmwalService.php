@@ -12,6 +12,7 @@ class AmwalService
      * AmwalPay Base URLs.
      */
     public const LIVE_BASE_URL = 'https://checkout.amwalpay.om';
+
     public const UAT_BASE_URL = 'https://uatcheckout.amwalpay.om';
 
     /**
@@ -53,7 +54,7 @@ class AmwalService
         $amountOmr = (float) $params['amount'];
 
         if ($payment->isSimulationMode() || ! $payment->hasValidCredentials()) {
-            $mockSessionId = 'amwal_sess_sim_' . uniqid();
+            $mockSessionId = 'amwal_sess_sim_'.uniqid();
 
             return [
                 'success' => true,
@@ -89,7 +90,7 @@ class AmwalService
 
             $requestData['secure_hash'] = $this->generateSecureHash($requestData, $secretKey);
 
-            $response = $this->getHttpClient()->post($baseUrl . '/api/v1/checkout/initiate', [
+            $response = $this->getHttpClient()->post($baseUrl.'/api/v1/checkout/initiate', [
                 'headers' => [
                     'Content-Type' => 'application/json',
                     'Accept' => 'application/json',
@@ -101,7 +102,7 @@ class AmwalService
 
             if ($response->getStatusCode() === 200 && ($body['status'] ?? '') === 'SUCCESS') {
                 $paymentToken = $body['payment_token'] ?? $body['session_id'] ?? '';
-                $iframeUrl = $baseUrl . '/smartbox/embed/' . $paymentToken;
+                $iframeUrl = $baseUrl.'/smartbox/embed/'.$paymentToken;
 
                 return [
                     'success' => true,
@@ -120,7 +121,7 @@ class AmwalService
                 'raw' => $body,
             ];
         } catch (\Throwable $e) {
-            Log::error('AmwalPay API exception: ' . $e->getMessage());
+            Log::error('AmwalPay API exception: '.$e->getMessage());
 
             return [
                 'success' => false,
@@ -156,7 +157,7 @@ class AmwalService
             ];
             $checkData['secure_hash'] = $this->generateSecureHash($checkData, $secretKey);
 
-            $response = $this->getHttpClient()->post($baseUrl . '/api/v1/checkout/status', [
+            $response = $this->getHttpClient()->post($baseUrl.'/api/v1/checkout/status', [
                 'headers' => ['Content-Type' => 'application/json'],
                 'json' => $checkData,
             ]);
@@ -173,7 +174,7 @@ class AmwalService
                 'raw' => $body,
             ];
         } catch (\Throwable $e) {
-            Log::error('AmwalPay verify error: ' . $e->getMessage());
+            Log::error('AmwalPay verify error: '.$e->getMessage());
 
             return [
                 'success' => false,
@@ -213,6 +214,6 @@ class AmwalService
 
         $baseUrl = $this->getBaseUrl($payment);
 
-        return $baseUrl . '/smartbox/embed/' . $sessionId;
+        return $baseUrl.'/smartbox/embed/'.$sessionId;
     }
 }

@@ -5,15 +5,16 @@ namespace NumbersNebula\OmanPayments\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
 use Illuminate\Support\Facades\Log;
-use Webkul\Checkout\Facades\Cart;
+use Illuminate\View\View;
 use NumbersNebula\OmanPayments\Contracts\OmanPaymentGatewayInterface;
 use NumbersNebula\OmanPayments\Models\OmanPaymentTransaction;
-use NumbersNebula\OmanPayments\Payment\ThawaniPayment;
-use NumbersNebula\OmanPayments\Payment\BankMuscatPayment;
 use NumbersNebula\OmanPayments\Payment\AmwalPayment;
+use NumbersNebula\OmanPayments\Payment\BankMuscatPayment;
 use NumbersNebula\OmanPayments\Payment\PaymobPayment;
+use NumbersNebula\OmanPayments\Payment\ThawaniPayment;
+use Webkul\Checkout\Facades\Cart;
+use Webkul\Checkout\Repositories\CartRepository;
 use Webkul\Sales\Models\Invoice;
 use Webkul\Sales\Models\Order;
 use Webkul\Sales\Repositories\InvoiceRepository;
@@ -37,6 +38,7 @@ class OmanPaymentController extends Controller
      * Create controller instance.
      */
     public function __construct(
+        protected CartRepository $cartRepository,
         protected OrderRepository $orderRepository,
         protected OrderTransactionRepository $orderTransactionRepository,
         protected InvoiceRepository $invoiceRepository,
@@ -63,6 +65,7 @@ class OmanPaymentController extends Controller
 
         if (! $gatewayInstance) {
             session()->flash('error', trans('oman_payments::app.messages.invalid_gateway'));
+
             return redirect()->route('shop.checkout.cart.index');
         }
 
@@ -70,6 +73,7 @@ class OmanPaymentController extends Controller
 
         if (! $cart) {
             session()->flash('error', trans('oman_payments::app.messages.cart_empty'));
+
             return redirect()->route('shop.checkout.cart.index');
         }
 
@@ -77,12 +81,12 @@ class OmanPaymentController extends Controller
 
         try {
             $billingAddress = $cart->billing_address;
-            $customerName = $billingAddress ? trim($billingAddress->first_name . ' ' . $billingAddress->last_name) : 'Guest Customer';
+            $customerName = $billingAddress ? trim($billingAddress->first_name.' '.$billingAddress->last_name) : 'Guest Customer';
             $customerEmail = $billingAddress ? $billingAddress->email : ($cart->customer_email ?? 'guest@example.com');
 
             $params = [
                 'cart_id' => $cart->id,
-                'order_id' => 'CART_' . $cart->id . '_' . time(),
+                'order_id' => 'CART_'.$cart->id.'_'.time(),
                 'amount' => (float) $cart->base_grand_total,
                 'currency' => $currency,
                 'customer_name' => $customerName,
@@ -95,13 +99,13 @@ class OmanPaymentController extends Controller
             if (! ($sessionResult['success'] ?? false)) {
                 $errorMsg = $sessionResult['error'] ?? trans('oman_payments::app.messages.session_error');
                 session()->flash('error', $errorMsg);
+
                 return redirect()->route('shop.checkout.onepage.index');
             }
 
             $sessionId = $sessionResult['session_id'];
             $iframeUrl = $sessionResult['iframe_url'];
 
-            // Store transaction record
             OmanPaymentTransaction::create([
                 'transaction_id' => $sessionId,
                 'gateway' => $gateway,
@@ -126,8 +130,9 @@ class OmanPaymentController extends Controller
                 'isSimulation' => $gatewayInstance->isSimulationMode(),
             ]);
         } catch (\Throwable $e) {
-            Log::error('Oman payment redirect failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            Log::error('Oman payment redirect failed: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
             session()->flash('error', trans('oman_payments::app.messages.generic_error'));
+
             return redirect()->route('shop.checkout.onepage.index');
         }
     }
@@ -141,6 +146,7 @@ class OmanPaymentController extends Controller
 
         if (! $gatewayInstance) {
             session()->flash('error', trans('oman_payments::app.messages.invalid_gateway'));
+
             return redirect()->route('shop.checkout.cart.index');
         }
 
@@ -149,37 +155,74 @@ class OmanPaymentController extends Controller
             ?? $request->input('id')
             ?? $request->input('order_id');
 
+        $cartId = $request->input('cart_id');
+
+        $transaction = null;
+
+        if ($transactionId) {
+            $transaction = OmanPaymentTransaction::where('transaction_id', $transactionId)
+                ->orWhere('session_id', $transactionId)
+                ->first();
+        }
+
+        if (! $transaction && $cartId) {
+            $transaction = OmanPaymentTransaction::where('cart_id', $cartId)
+                ->where('gateway', $gateway)
+                ->latest()
+                ->first();
+        }
+
+        if (! $transactionId && $transaction) {
+            $transactionId = $transaction->session_id ?? $transaction->transaction_id;
+        }
+
         if (! $transactionId) {
             session()->flash('error', trans('oman_payments::app.messages.invalid_transaction'));
+
             return redirect()->route('shop.checkout.cart.index');
         }
 
         $verification = $gatewayInstance->verifyPayment($transactionId, $request->all());
 
         if (! ($verification['success'] ?? false)) {
-            // Update transaction record if found
-            OmanPaymentTransaction::where('transaction_id', $transactionId)
-                ->orWhere('session_id', $transactionId)
-                ->update(['status' => 'failed', 'response_data' => $verification['raw'] ?? []]);
+            if ($transaction) {
+                $transaction->update(['status' => 'failed', 'response_data' => $verification['raw'] ?? []]);
+            } else {
+                OmanPaymentTransaction::where('transaction_id', $transactionId)
+                    ->orWhere('session_id', $transactionId)
+                    ->update(['status' => 'failed', 'response_data' => $verification['raw'] ?? []]);
+            }
 
             session()->flash('error', trans('oman_payments::app.messages.payment_failed'));
+
             return redirect()->route('shop.checkout.cart.index');
         }
 
         $cart = Cart::getCart();
 
+        if (! $cart && $transaction?->cart_id) {
+            $savedCart = $this->cartRepository->find($transaction->cart_id);
+
+            if ($savedCart && $savedCart->is_active) {
+                Cart::setCart($savedCart);
+                Cart::collectTotals();
+                $cart = Cart::getCart();
+            }
+        }
+
         if (! $cart) {
-            // Check if order was already created previously by webhook or concurrent callback
-            $existingTxn = OmanPaymentTransaction::where('transaction_id', $transactionId)
+            $existingTxn = $transaction ?? OmanPaymentTransaction::where('transaction_id', $transactionId)
                 ->orWhere('session_id', $transactionId)
                 ->first();
 
             if ($existingTxn && $existingTxn->order_id) {
                 session()->flash('order_id', $existingTxn->order_id);
+
                 return redirect()->route('shop.checkout.onepage.success');
             }
 
             session()->flash('error', trans('oman_payments::app.messages.cart_expired'));
+
             return redirect()->route('shop.checkout.cart.index');
         }
 
@@ -193,6 +236,14 @@ class OmanPaymentController extends Controller
     {
         try {
             $orderData = (new OrderResource($cart))->jsonSerialize();
+
+            $orderData['payment']['additional'] = [
+                'status' => Invoice::STATUS_PAID,
+                'gateway' => $gateway,
+                'transaction_id' => $transactionId,
+                'card_type' => $verification['card_type'] ?? 'Oman Payment Card',
+            ];
+
             $order = $this->orderRepository->create($orderData);
 
             if ($order->payment) {
@@ -208,14 +259,13 @@ class OmanPaymentController extends Controller
 
             $this->orderRepository->update(['status' => Order::STATUS_PROCESSING], $order->id);
 
-            // Generate invoice
             $invoiceData = $this->prepareInvoiceData($order->id);
             $invoice = null;
+
             if (! empty($invoiceData)) {
                 $invoice = $this->invoiceRepository->create($invoiceData);
             }
 
-            // Save order transaction
             $this->orderTransactionRepository->create([
                 'transaction_id' => $transactionId,
                 'status' => 'captured',
@@ -231,7 +281,6 @@ class OmanPaymentController extends Controller
                 ]),
             ]);
 
-            // Update Oman Payment Transaction record
             OmanPaymentTransaction::where('transaction_id', $transactionId)
                 ->orWhere('session_id', $transactionId)
                 ->update([
@@ -246,8 +295,9 @@ class OmanPaymentController extends Controller
 
             return redirect()->route('shop.checkout.onepage.success');
         } catch (\Throwable $e) {
-            Log::error('Failed to create order from Oman payment: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            Log::error('Failed to create order from Oman payment: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
             session()->flash('error', trans('oman_payments::app.messages.generic_error'));
+
             return redirect()->route('shop.checkout.cart.index');
         }
     }

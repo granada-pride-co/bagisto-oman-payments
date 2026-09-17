@@ -34,7 +34,7 @@ class PaymobService
         $amountCents = (int) round($amountOmr * 1000); // 1 OMR = 1000 Baisa
 
         if ($payment->isSimulationMode() || ! $payment->hasValidCredentials()) {
-            $mockSessionId = 'paymob_sim_token_' . uniqid();
+            $mockSessionId = 'paymob_sim_token_'.uniqid();
 
             return [
                 'success' => true,
@@ -56,7 +56,7 @@ class PaymobService
             $iframeId = $payment->getConfigData('iframe_id');
 
             // Step 1: Authentication
-            $authResponse = $this->getHttpClient()->post(self::BASE_URL . '/api/auth/tokens', [
+            $authResponse = $this->getHttpClient()->post(self::BASE_URL.'/api/auth/tokens', [
                 'json' => ['api_key' => $apiKey],
             ]);
             $authData = json_decode((string) $authResponse->getBody(), true) ?? [];
@@ -71,7 +71,7 @@ class PaymobService
             }
 
             // Step 2: Order Registration
-            $orderResponse = $this->getHttpClient()->post(self::BASE_URL . '/api/ecommerce/orders', [
+            $orderResponse = $this->getHttpClient()->post(self::BASE_URL.'/api/ecommerce/orders', [
                 'json' => [
                     'auth_token' => $authToken,
                     'delivery_needed' => 'false',
@@ -94,7 +94,7 @@ class PaymobService
 
             // Step 3: Payment Key Generation
             $nameParts = explode(' ', trim($params['customer_name'] ?? 'Guest Customer'), 2);
-            $keyResponse = $this->getHttpClient()->post(self::BASE_URL . '/api/acceptance/payment_keys', [
+            $keyResponse = $this->getHttpClient()->post(self::BASE_URL.'/api/acceptance/payment_keys', [
                 'json' => [
                     'auth_token' => $authToken,
                     'amount_cents' => (string) $amountCents,
@@ -130,7 +130,7 @@ class PaymobService
                 ];
             }
 
-            $iframeUrl = self::BASE_URL . "/api/acceptance/iframes/{$iframeId}?payment_token={$paymentToken}";
+            $iframeUrl = self::BASE_URL."/api/acceptance/iframes/{$iframeId}?payment_token={$paymentToken}";
 
             return [
                 'success' => true,
@@ -140,7 +140,7 @@ class PaymobService
                 'raw' => ['paymob_order_id' => $paymobOrderId],
             ];
         } catch (\Throwable $e) {
-            Log::error('Paymob API exception: ' . $e->getMessage());
+            Log::error('Paymob API exception: '.$e->getMessage());
 
             return [
                 'success' => false,
@@ -211,6 +211,6 @@ class PaymobService
 
         $iframeId = $payment->getConfigData('iframe_id');
 
-        return self::BASE_URL . "/api/acceptance/iframes/{$iframeId}?payment_token={$sessionId}";
+        return self::BASE_URL."/api/acceptance/iframes/{$iframeId}?payment_token={$sessionId}";
     }
 }

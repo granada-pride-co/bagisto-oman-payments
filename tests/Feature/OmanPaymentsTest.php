@@ -2,12 +2,12 @@
 
 namespace NumbersNebula\OmanPayments\Tests\Feature;
 
-use NumbersNebula\OmanPayments\Payment\ThawaniPayment;
-use NumbersNebula\OmanPayments\Payment\BankMuscatPayment;
-use NumbersNebula\OmanPayments\Payment\AmwalPayment;
-use NumbersNebula\OmanPayments\Payment\PaymobPayment;
 use NumbersNebula\OmanPayments\Models\OmanPaymentTransaction;
-use NumbersNebula\OmanPayments\Models\OmanPaymentWebhook;
+use NumbersNebula\OmanPayments\Payment\AmwalPayment;
+use NumbersNebula\OmanPayments\Payment\BankMuscatPayment;
+use NumbersNebula\OmanPayments\Payment\PaymobPayment;
+use NumbersNebula\OmanPayments\Payment\ThawaniPayment;
+use NumbersNebula\OmanPayments\Services\ThawaniService;
 use NumbersNebula\OmanPayments\Tests\OmanPaymentsTestCase;
 
 class OmanPaymentsTest extends OmanPaymentsTestCase
@@ -153,7 +153,6 @@ class OmanPaymentsTest extends OmanPaymentsTestCase
         $cart = $this->createCartWithItems('oman_thawani');
         $this->actingAs($cart->customer);
 
-        // Step 1: Call redirect to obtain iframe wrapper
         $redirectResponse = $this->get(route('oman_payments.redirect', ['gateway' => 'oman_thawani']));
         $redirectResponse->assertStatus(200);
         $redirectResponse->assertViewIs('oman_payments::iframe-wrapper');
@@ -162,7 +161,6 @@ class OmanPaymentsTest extends OmanPaymentsTestCase
         $this->assertNotNull($transaction);
         $this->assertEquals('pending', $transaction->status);
 
-        // Step 2: Call callback with successful transaction
         $callbackResponse = $this->get(route('oman_payments.callback', [
             'gateway' => 'oman_thawani',
             'session_id' => $transaction->session_id,
@@ -172,7 +170,6 @@ class OmanPaymentsTest extends OmanPaymentsTestCase
 
         $callbackResponse->assertRedirect(route('shop.checkout.onepage.success'));
 
-        // Step 3: Assert transaction updated, order created, invoice created
         $transaction->refresh();
         $this->assertEquals('completed', $transaction->status);
         $this->assertNotNull($transaction->order_id);
@@ -192,5 +189,32 @@ class OmanPaymentsTest extends OmanPaymentsTestCase
             'status' => 'captured',
             'payment_method' => 'oman_thawani',
         ]);
+    }
+
+    /**
+     * Test Thawani payment credentials, base URL switching and webhook handling.
+     */
+    public function test_thawani_service_configuration_and_webhook(): void
+    {
+        $thawani = app(ThawaniPayment::class);
+        $service = app(ThawaniService::class);
+
+        $this->assertEquals('https://uatcheckout.thawani.om', $service->getBaseUrl($thawani));
+
+        $webhookPayload = [
+            'event_type' => 'checkout.session.completed',
+            'data' => [
+                'session_id' => 'sess_thw_test_456',
+                'invoice' => 'INV_THW_9876',
+                'client_reference_id' => 'CART_999',
+            ],
+        ];
+
+        $webhookResult = $service->handleWebhook($thawani, $webhookPayload, null);
+
+        $this->assertTrue($webhookResult['success']);
+        $this->assertEquals('completed', $webhookResult['status']);
+        $this->assertEquals('INV_THW_9876', $webhookResult['transaction_id']);
+        $this->assertEquals('CART_999', $webhookResult['order_id']);
     }
 }

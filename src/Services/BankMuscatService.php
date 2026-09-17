@@ -12,6 +12,7 @@ class BankMuscatService
      * Default MPGS gateway host for Bank Muscat.
      */
     public const DEFAULT_GATEWAY_HOST = 'bankmuscat.gateway.mastercard.com';
+
     public const DEFAULT_API_VERSION = '100';
 
     /**
@@ -33,7 +34,7 @@ class BankMuscatService
         $customHost = $payment->getConfigData('gateway_host');
         $host = ! empty($customHost) ? $customHost : self::DEFAULT_GATEWAY_HOST;
 
-        return 'https://' . trim($host, '/');
+        return 'https://'.trim($host, '/');
     }
 
     /**
@@ -45,7 +46,7 @@ class BankMuscatService
         $amountOmr = (float) $params['amount'];
 
         if ($payment->isSimulationMode() || ! $payment->hasValidCredentials()) {
-            $mockSessionId = 'SESSION_BM_SIM_' . uniqid();
+            $mockSessionId = 'SESSION_BM_SIM_'.uniqid();
 
             return [
                 'success' => true,
@@ -75,7 +76,7 @@ class BankMuscatService
                     'id' => (string) $orderId,
                     'amount' => number_format($amountOmr, 3, '.', ''),
                     'currency' => $params['currency'] ?? 'OMR',
-                    'description' => 'Bagisto Order #' . $orderId,
+                    'description' => 'Bagisto Order #'.$orderId,
                 ],
                 'interaction' => [
                     'operation' => 'PURCHASE',
@@ -89,7 +90,7 @@ class BankMuscatService
             ];
 
             $response = $this->getHttpClient()->post($endpoint, [
-                'auth' => ['merchant.' . $merchantId, $apiPassword],
+                'auth' => ['merchant.'.$merchantId, $apiPassword],
                 'headers' => [
                     'Content-Type' => 'application/json',
                     'Accept' => 'application/json',
@@ -121,7 +122,7 @@ class BankMuscatService
                 'raw' => $body,
             ];
         } catch (\Throwable $e) {
-            Log::error('Bank Muscat API exception: ' . $e->getMessage());
+            Log::error('Bank Muscat API exception: '.$e->getMessage());
 
             return [
                 'success' => false,
@@ -156,7 +157,7 @@ class BankMuscatService
             $endpoint = "{$baseUrl}/api/rest/version/{$apiVersion}/merchant/{$merchantId}/order/{$orderId}";
 
             $response = $this->getHttpClient()->get($endpoint, [
-                'auth' => ['merchant.' . $merchantId, $apiPassword],
+                'auth' => ['merchant.'.$merchantId, $apiPassword],
                 'headers' => ['Accept' => 'application/json'],
             ]);
 
@@ -174,7 +175,7 @@ class BankMuscatService
                 'raw' => $body,
             ];
         } catch (\Throwable $e) {
-            Log::error('Bank Muscat verify error: ' . $e->getMessage());
+            Log::error('Bank Muscat verify error: '.$e->getMessage());
 
             return [
                 'success' => false,

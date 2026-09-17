@@ -8,10 +8,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use NumbersNebula\OmanPayments\Models\OmanPaymentTransaction;
 use NumbersNebula\OmanPayments\Models\OmanPaymentWebhook;
-use NumbersNebula\OmanPayments\Payment\ThawaniPayment;
-use NumbersNebula\OmanPayments\Payment\BankMuscatPayment;
 use NumbersNebula\OmanPayments\Payment\AmwalPayment;
+use NumbersNebula\OmanPayments\Payment\BankMuscatPayment;
 use NumbersNebula\OmanPayments\Payment\PaymobPayment;
+use NumbersNebula\OmanPayments\Payment\ThawaniPayment;
 
 class WebhookController extends Controller
 {
@@ -46,7 +46,8 @@ class WebhookController extends Controller
         ]);
 
         if (! isset($this->gatewayMap[$gateway])) {
-            $logEntry->update(['error_log' => 'Unknown gateway: ' . $gateway]);
+            $logEntry->update(['error_log' => 'Unknown gateway: '.$gateway]);
+
             return response()->json(['status' => 'error', 'message' => 'Unknown gateway'], 400);
         }
 
@@ -67,7 +68,7 @@ class WebhookController extends Controller
 
             return response()->json(['status' => 'success', 'data' => $result]);
         } catch (\Throwable $e) {
-            Log::error("Webhook error for {$gateway}: " . $e->getMessage());
+            Log::error("Webhook error for {$gateway}: ".$e->getMessage());
             $logEntry->update(['error_log' => $e->getMessage()]);
 
             return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);

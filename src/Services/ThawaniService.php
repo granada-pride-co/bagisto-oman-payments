@@ -12,6 +12,7 @@ class ThawaniService
      * Thawani API URLs.
      */
     public const LIVE_BASE_URL = 'https://checkout.thawani.om';
+
     public const UAT_BASE_URL = 'https://uatcheckout.thawani.om';
 
     /**
@@ -40,11 +41,10 @@ class ThawaniService
     {
         $orderId = $params['order_id'] ?? $params['cart_id'];
         $amountOmr = (float) $params['amount'];
-        // Thawani amounts are expressed in Baisa (1 OMR = 1000 Baisa)
         $amountBaisa = (int) round($amountOmr * 1000);
 
         if ($payment->isSimulationMode() || ! $payment->hasValidCredentials()) {
-            $mockSessionId = 'thw_sess_sim_' . uniqid();
+            $mockSessionId = 'thw_sess_sim_'.uniqid();
 
             return [
                 'success' => true,
@@ -70,13 +70,21 @@ class ThawaniService
                 'mode' => 'payment',
                 'products' => [
                     [
-                        'name' => 'Bagisto Order #' . $orderId,
+                        'name' => 'Bagisto Order #'.$orderId,
                         'unit_amount' => $amountBaisa,
                         'quantity' => 1,
                     ],
                 ],
-                'success_url' => route('oman_payments.callback', ['gateway' => 'oman_thawani']),
-                'cancel_url' => route('oman_payments.cancel', ['gateway' => 'oman_thawani']),
+                'success_url' => route('oman_payments.callback', [
+                    'gateway' => 'oman_thawani',
+                    'cart_id' => $params['cart_id'] ?? null,
+                    'order_id' => (string) $orderId,
+                ]),
+                'cancel_url' => route('oman_payments.cancel', [
+                    'gateway' => 'oman_thawani',
+                    'cart_id' => $params['cart_id'] ?? null,
+                    'order_id' => (string) $orderId,
+                ]),
                 'metadata' => [
                     'cart_id' => $params['cart_id'] ?? null,
                     'customer_email' => $params['customer_email'] ?? '',
@@ -84,7 +92,7 @@ class ThawaniService
                 ],
             ];
 
-            $response = $this->getHttpClient()->post($baseUrl . '/api/v1/checkout/session', [
+            $response = $this->getHttpClient()->post($baseUrl.'/api/v1/checkout/session', [
                 'headers' => [
                     'thawani-api-key' => $secretKey,
                     'Content-Type' => 'application/json',
@@ -97,7 +105,7 @@ class ThawaniService
 
             if ($response->getStatusCode() === 200 && ($body['success'] ?? false)) {
                 $sessionId = $body['data']['session_id'] ?? '';
-                $iframeUrl = $baseUrl . '/pay/' . $sessionId . '?key=' . $publishableKey;
+                $iframeUrl = $baseUrl.'/pay/'.$sessionId.'?key='.$publishableKey;
 
                 return [
                     'success' => true,
@@ -116,7 +124,7 @@ class ThawaniService
                 'raw' => $body,
             ];
         } catch (\Throwable $e) {
-            Log::error('Thawani API exception: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            Log::error('Thawani API exception: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
 
             return [
                 'success' => false,
@@ -145,7 +153,7 @@ class ThawaniService
             $secretKey = $payment->getConfigData('secret_key');
             $baseUrl = $this->getBaseUrl($payment);
 
-            $response = $this->getHttpClient()->get($baseUrl . '/api/v1/checkout/session/' . $transactionId, [
+            $response = $this->getHttpClient()->get($baseUrl.'/api/v1/checkout/session/'.$transactionId, [
                 'headers' => [
                     'thawani-api-key' => $secretKey,
                     'Accept' => 'application/json',
@@ -166,7 +174,7 @@ class ThawaniService
                 'raw' => $body,
             ];
         } catch (\Throwable $e) {
-            Log::error('Thawani verify error: ' . $e->getMessage());
+            Log::error('Thawani verify error: '.$e->getMessage());
 
             return [
                 'success' => false,
@@ -207,6 +215,6 @@ class ThawaniService
         $publishableKey = $payment->getConfigData('public_key');
         $baseUrl = $this->getBaseUrl($payment);
 
-        return $baseUrl . '/pay/' . $sessionId . '?key=' . $publishableKey;
+        return $baseUrl.'/pay/'.$sessionId.'?key='.$publishableKey;
     }
 }

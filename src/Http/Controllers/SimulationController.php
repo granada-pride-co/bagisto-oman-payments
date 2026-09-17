@@ -14,7 +14,7 @@ class SimulationController extends Controller
     public function thawani(Request $request): View
     {
         return view('oman_payments::simulation.thawani-iframe', [
-            'sessionId' => $request->input('session_id', 'thw_sim_' . uniqid()),
+            'sessionId' => $request->input('session_id', 'thw_sim_'.uniqid()),
             'amount' => (float) $request->input('amount', 25.500),
             'currency' => $request->input('currency', 'OMR'),
             'callbackUrl' => route('oman_payments.callback', ['gateway' => 'oman_thawani']),
@@ -28,7 +28,7 @@ class SimulationController extends Controller
     public function bankmuscat(Request $request): View
     {
         return view('oman_payments::simulation.bankmuscat-iframe', [
-            'sessionId' => $request->input('session_id', 'SESSION_BM_SIM_' . uniqid()),
+            'sessionId' => $request->input('session_id', 'SESSION_BM_SIM_'.uniqid()),
             'amount' => (float) $request->input('amount', 25.500),
             'currency' => $request->input('currency', 'OMR'),
             'callbackUrl' => route('oman_payments.callback', ['gateway' => 'oman_bankmuscat']),
@@ -42,7 +42,7 @@ class SimulationController extends Controller
     public function amwal(Request $request): View
     {
         return view('oman_payments::simulation.amwal-iframe', [
-            'sessionId' => $request->input('session_id', 'amwal_sess_sim_' . uniqid()),
+            'sessionId' => $request->input('session_id', 'amwal_sess_sim_'.uniqid()),
             'amount' => (float) $request->input('amount', 25.500),
             'currency' => $request->input('currency', 'OMR'),
             'callbackUrl' => route('oman_payments.callback', ['gateway' => 'oman_amwal']),
@@ -56,7 +56,7 @@ class SimulationController extends Controller
     public function paymob(Request $request): View
     {
         return view('oman_payments::simulation.paymob-iframe', [
-            'sessionId' => $request->input('session_id', 'paymob_sim_token_' . uniqid()),
+            'sessionId' => $request->input('session_id', 'paymob_sim_token_'.uniqid()),
             'amount' => (float) $request->input('amount', 25.500),
             'currency' => $request->input('currency', 'OMR'),
             'callbackUrl' => route('oman_payments.callback', ['gateway' => 'oman_paymob']),

@@ -51,7 +51,11 @@ class ThawaniPayment extends AbstractOmanPayment
     {
         $image = $this->getConfigData('image');
 
-        return $image ? Storage::url($image) : bagisto_asset('images/thawani.png', 'shop');
+        if ($image) {
+            return Storage::url($image);
+        }
+
+        return 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60"><rect width="60" height="60" rx="12" fill="%2316a34a"/><circle cx="30" cy="30" r="16" fill="none" stroke="white" stroke-width="4"/><circle cx="30" cy="30" r="7" fill="white"/></svg>';
     }
 
     /**

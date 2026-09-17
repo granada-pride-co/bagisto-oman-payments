@@ -2,8 +2,8 @@
 
 namespace NumbersNebula\OmanPayments\Payment;
 
-use Webkul\Payment\Payment\Payment;
 use NumbersNebula\OmanPayments\Contracts\OmanPaymentGatewayInterface;
+use Webkul\Payment\Payment\Payment;
 
 abstract class AbstractOmanPayment extends Payment implements OmanPaymentGatewayInterface
 {
@@ -21,6 +21,20 @@ abstract class AbstractOmanPayment extends Payment implements OmanPaymentGateway
     }
 
     /**
+     * Retrieve information from payment configuration with fallback to default config.
+     */
+    public function getConfigData($field)
+    {
+        $value = parent::getConfigData($field);
+
+        if ($value === null) {
+            return config('payment_methods.'.$this->getCode().'.'.$field);
+        }
+
+        return $value;
+    }
+
+    /**
      * Check if payment method is available in current checkout.
      */
     public function isAvailable(): bool
@@ -29,7 +43,6 @@ abstract class AbstractOmanPayment extends Payment implements OmanPaymentGateway
             return false;
         }
 
-        // If in simulation mode, it's always available for demonstration/testing
         if ($this->isSimulationMode()) {
             return true;
         }

@@ -52,7 +52,11 @@ class PaymobPayment extends AbstractOmanPayment
     {
         $image = $this->getConfigData('image');
 
-        return $image ? Storage::url($image) : bagisto_asset('images/paymob.png', 'shop');
+        if ($image) {
+            return Storage::url($image);
+        }
+
+        return 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60"><rect width="60" height="60" rx="12" fill="%232563eb"/><text x="50%" y="54%" font-family="Arial,sans-serif" font-size="14" font-weight="bold" fill="white" dominant-baseline="middle" text-anchor="middle">PAY</text></svg>';
     }
 
     /**

@@ -1,9 +1,9 @@
 <?php
 
-use NumbersNebula\OmanPayments\Payment\ThawaniPayment;
-use NumbersNebula\OmanPayments\Payment\BankMuscatPayment;
 use NumbersNebula\OmanPayments\Payment\AmwalPayment;
+use NumbersNebula\OmanPayments\Payment\BankMuscatPayment;
 use NumbersNebula\OmanPayments\Payment\PaymobPayment;
+use NumbersNebula\OmanPayments\Payment\ThawaniPayment;
 
 return [
     'oman_thawani' => [
